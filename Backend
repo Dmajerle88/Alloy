@@ -1,0 +1,190 @@
+// server.js
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Alloy API credentials
+const ALLOY_API_BASE_URL = 'https://sandbox.alloy.co/v1';
+const WORKFLOW_TOKEN = 'xxxxx';
+const WORKFLOW_SECRET = 'xxxxx';
+
+// Create basic auth header
+const basicAuth = Buffer.from(`${WORKFLOW_TOKEN}:${WORKFLOW_SECRET}`).toString('base64');
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', message: 'KYC API is running' });
+});
+
+// Get Alloy parameters endpoint (optional - for testing)
+app.get('/api/kyc/parameters', async (req, res) => {
+    try {
+        const response = await axios.get(`${ALLOY_API_BASE_URL}/parameters/`, {
+            headers: {
+                'Authorization': `Basic ${basicAuth}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error fetching parameters:', error.response?.data || error.message);
+        res.status(500).json({ 
+            error: 'Failed to fetch parameters',
+            details: error.response?.data || error.message 
+        });
+    }
+});
+
+// Submit KYC evaluation endpoint
+app.post('/api/kyc/submit', async (req, res) => {
+    try {
+        // Validate required fields
+        const requiredFields = [
+            'name_first', 'name_last', 'email_address', 'birth_date',
+            'document_ssn', 'address_line_1', 'address_city', 
+            'address_state', 'address_postal_code', 'address_country_code'
+        ];
+
+        for (const field of requiredFields) {
+            if (!req.body[field]) {
+                return res.status(400).json({ 
+                    error: `Missing required field: ${field}` 
+                });
+            }
+        }
+
+        // Additional validation
+        if (req.body.document_ssn.length !== 9 || !/^\d+$/.test(req.body.document_ssn)) {
+            return res.status(400).json({ 
+                error: 'SSN must be exactly 9 digits' 
+            });
+        }
+
+        if (req.body.address_state.length !== 2) {
+            return res.status(400).json({ 
+                error: 'State must be a 2-letter code' 
+            });
+        }
+
+        if (req.body.address_country_code !== 'US') {
+            return res.status(400).json({ 
+                error: 'Country must be US for this application' 
+            });
+        }
+
+        // Validate date format (ISO-8601)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(req.body.birth_date)) {
+            return res.status(400).json({ 
+                error: 'Birth date must be in YYYY-MM-DD format' 
+            });
+        }
+
+        // Prepare the payload for Alloy API
+        const alloyPayload = {
+            name_first: req.body.name_first,
+            name_last: req.body.name_last,
+            email_address: req.body.email_address,
+            birth_date: req.body.birth_date,
+            document_ssn: req.body.document_ssn,
+            address_line_1: req.body.address_line_1,
+            address_line_2: req.body.address_line_2 || '',
+            address_city: req.body.address_city,
+            address_state: req.body.address_state,
+            address_postal_code: req.body.address_postal_code,
+            address_country_code: req.body.address_country_code
+        };
+
+        console.log('Submitting to Alloy:', {
+            ...alloyPayload,
+            document_ssn: '***' + alloyPayload.document_ssn.slice(-4) // Log last 4 digits only
+        });
+
+        // Submit to Alloy API
+        const response = await axios.post(
+            `${ALLOY_API_BASE_URL}/evaluations/`,
+            alloyPayload,
+            {
+                headers: {
+                    'Authorization': `Basic ${basicAuth}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        console.log('Alloy response:', response.data);
+
+        // Extract outcome from response
+        const outcome = response.data.summary?.outcome || 'Unknown';
+        
+        // Map Alloy outcomes to our expected values
+        let mappedOutcome = outcome;
+        if (outcome === 'Approved') {
+            mappedOutcome = 'Approved';
+        } else if (outcome === 'Manual Review') {
+            mappedOutcome = 'Manual Review';
+        } else if (outcome === 'Denied' || outcome === 'Deny') {
+            mappedOutcome = 'Denied';
+        }
+
+        res.json({
+            success: true,
+            outcome: mappedOutcome,
+            alloyResponse: response.data
+        });
+
+    } catch (error) {
+        console.error('Error submitting to Alloy:', error.response?.data || error.message);
+        
+        // Handle Alloy API errors
+        if (error.response) {
+            const statusCode = error.response.status;
+            const errorData = error.response.data;
+            
+            if (statusCode === 400) {
+                res.status(400).json({ 
+                    error: 'Invalid request',
+                    message: errorData.error || 'Please check your input data',
+                    details: errorData
+                });
+            } else if (statusCode === 401) {
+                res.status(401).json({ 
+                    error: 'Authentication failed',
+                    message: 'Invalid API credentials'
+                });
+            } else {
+                res.status(statusCode).json({ 
+                    error: 'Alloy API error',
+                    message: errorData.error || 'An error occurred',
+                    details: errorData
+                });
+            }
+        } else {
+            res.status(500).json({ 
+                error: 'Server error',
+                message: error.message
+            });
+        }
+    }
+});
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`KYC API server running on port ${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    app.close(() => {
+        console.log('HTTP server closed');
+    });
+});
