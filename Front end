@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fintech KYC Signup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .error {
+            color: #e74c3c;
+            font-size: 13px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .input-error {
+            border-color: #e74c3c !important;
+        }
+
+        .address-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .address-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .result-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .result-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .result-message {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .success .result-icon { color: #27ae60; }
+        .review .result-icon { color: #f39c12; }
+        .denied .result-icon { color: #e74c3c; }
+
+        .back-button {
+            background: #f0f0f0;
+            color: #333;
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        .back-button:hover {
+            background: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="formSection">
+            <h1>Create Your Account</h1>
+            <p class="subtitle">Complete your KYC verification to get started</p>
+            
+            <form id="kycForm">
+                <div class="form-group">
+                    <label for="firstName">First Name</label>
+                    <input type="text" id="firstName" name="firstName" required>
+                    <span class="error" id="firstNameError">Please enter your first name</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="lastName">Last Name</label>
+                    <input type="text" id="lastName" name="lastName" required>
+                    <span class="error" id="lastNameError">Please enter your last name</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                    <span class="error" id="emailError">Please enter a valid email address</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="dob">Date of Birth</label>
+                    <input type="date" id="dob" name="dob" required max="">
+                    <span class="error" id="dobError">Please enter a valid date of birth</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="ssn">Social Security Number</label>
+                    <input type="text" id="ssn" name="ssn" placeholder="123456789" maxlength="9" required>
+                    <span class="error" id="ssnError">SSN must be exactly 9 digits</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Address</label>
+                    <div class="address-grid">
+                        <div class="full-width">
+                            <input type="text" id="addressLine1" name="addressLine1" placeholder="Street Address" required>
+                            <span class="error" id="addressLine1Error">Please enter your address</span>
+                        </div>
+                        <div class="full-width">
+                            <input type="text" id="addressLine2" name="addressLine2" placeholder="Apartment, suite, etc. (optional)">
+                        </div>
+                        <div>
+                            <input type="text" id="city" name="city" placeholder="City" required>
+                            <span class="error" id="cityError">Please enter your city</span>
+                        </div>
+                        <div>
+                            <input type="text" id="state" name="state" placeholder="State (e.g., NY)" maxlength="2" required>
+                            <span class="error" id="stateError">State must be 2 letters (e.g., NY)</span>
+                        </div>
+                        <div>
+                            <input type="text" id="zipCode" name="zipCode" placeholder="Zip Code" required>
+                            <span class="error" id="zipCodeError">Please enter a valid zip code</span>
+                        </div>
+                        <div>
+                            <input type="text" id="country" name="country" value="US" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" id="submitBtn">Submit Application</button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 15px; color: #666;">Processing your application...</p>
+            </div>
+        </div>
+
+        <div class="result" id="resultSection">
+            <div id="successResult" class="success" style="display: none;">
+                <div class="result-icon">✓</div>
+                <h2 class="result-title">Success!</h2>
+                <p class="result-message">Your account has been successfully created. Welcome aboard!</p>
+            </div>
+            <div id="reviewResult" class="review" style="display: none;">
+                <div class="result-icon">⏳</div>
+                <h2 class="result-title">Application Under Review</h2>
+                <p class="result-message">Thanks for submitting your application. We'll be in touch shortly.</p>
+            </div>
+            <div id="deniedResult" class="denied" style="display: none;">
+                <div class="result-icon">✗</div>
+                <h2 class="result-title">Application Not Successful</h2>
+                <p class="result-message">Sorry, your application was not successful at this time.</p>
+            </div>
+            <button class="back-button" onclick="resetForm()">Submit Another Application</button>
+        </div>
+    </div>
+
+    <script>
+        // Set max date for DOB to ensure user is at least 18
+        const today = new Date();
+        const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+        document.getElementById('dob').max = maxDate.toISOString().split('T')[0];
+
+        // Form validation
+        function validateForm() {
+            let isValid = true;
+            
+            // First Name
+            const firstName = document.getElementById('firstName');
+            if (!firstName.value.trim()) {
+                showError('firstName', 'Please enter your first name');
+                isValid = false;
+            } else {
+                hideError('firstName');
+            }
+
+            // Last Name
+            const lastName = document.getElementById('lastName');
+            if (!lastName.value.trim()) {
+                showError('lastName', 'Please enter your last name');
+                isValid = false;
+            } else {
+                hideError('lastName');
+            }
+
+            // Email
+            const email = document.getElementById('email');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.value)) {
+                showError('email', 'Please enter a valid email address');
+                isValid = false;
+            } else {
+                hideError('email');
+            }
+
+            // Date of Birth
+            const dob = document.getElementById('dob');
+            if (!dob.value) {
+                showError('dob', 'Please enter your date of birth');
+                isValid = false;
+            } else {
+                hideError('dob');
+            }
+
+            // SSN
+            const ssn = document.getElementById('ssn');
+            const ssnRegex = /^\d{9}$/;
+            if (!ssnRegex.test(ssn.value)) {
+                showError('ssn', 'SSN must be exactly 9 digits');
+                isValid = false;
+            } else {
+                hideError('ssn');
+            }
+
+            // Address Line 1
+            const addressLine1 = document.getElementById('addressLine1');
+            if (!addressLine1.value.trim()) {
+                showError('addressLine1', 'Please enter your address');
+                isValid = false;
+            } else {
+                hideError('addressLine1');
+            }
+
+            // City
+            const city = document.getElementById('city');
+            if (!city.value.trim()) {
+                showError('city', 'Please enter your city');
+                isValid = false;
+            } else {
+                hideError('city');
+            }
+
+            // State
+            const state = document.getElementById('state');
+            const stateRegex = /^[A-Z]{2}$/i;
+            if (!stateRegex.test(state.value)) {
+                showError('state', 'State must be 2 letters (e.g., NY)');
+                isValid = false;
+            } else {
+                hideError('state');
+            }
+
+            // Zip Code
+            const zipCode = document.getElementById('zipCode');
+            const zipRegex = /^\d{5}(-\d{4})?$/;
+            if (!zipRegex.test(zipCode.value)) {
+                showError('zipCode', 'Please enter a valid zip code');
+                isValid = false;
+            } else {
+                hideError('zipCode');
+            }
+
+            return isValid;
+        }
+
+        function showError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const error = document.getElementById(fieldId + 'Error');
+            field.classList.add('input-error');
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+
+        function hideError(fieldId) {
+            const field = document.getElementById(fieldId);
+            const error = document.getElementById(fieldId + 'Error');
+            field.classList.remove('input-error');
+            error.style.display = 'none';
+        }
+
+        // Form submission
+        document.getElementById('kycForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!validateForm()) {
+                return;
+            }
+
+            const formData = {
+                name_first: document.getElementById('firstName').value,
+                name_last: document.getElementById('lastName').value,
+                email_address: document.getElementById('email').value,
+                birth_date: document.getElementById('dob').value,
+                document_ssn: document.getElementById('ssn').value,
+                address_line_1: document.getElementById('addressLine1').value,
+                address_line_2: document.getElementById('addressLine2').value,
+                address_city: document.getElementById('city').value,
+                address_state: document.getElementById('state').value.toUpperCase(),
+                address_postal_code: document.getElementById('zipCode').value,
+                address_country_code: 'US'
+            };
+
+            // Show loading
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                const response = await fetch('http://localhost:3000/api/kyc/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showResult(result.outcome);
+                } else {
+                    alert('Error: ' + (result.message || 'Something went wrong'));
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('loading').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to submit application. Please make sure the backend server is running on port 3000.');
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        function showResult(outcome) {
+            document.getElementById('formSection').style.display = 'none';
+            document.getElementById('resultSection').style.display = 'block';
+            
+            if (outcome === 'Approved') {
+                document.getElementById('successResult').style.display = 'block';
+            } else if (outcome === 'Manual Review') {
+                document.getElementById('reviewResult').style.display = 'block';
+            } else if (outcome === 'Denied') {
+                document.getElementById('deniedResult').style.display = 'block';
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('kycForm').reset();
+            document.getElementById('formSection').style.display = 'block';
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('successResult').style.display = 'none';
+            document.getElementById('reviewResult').style.display = 'none';
+            document.getElementById('deniedResult').style.display = 'none';
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('loading').style.display = 'none';
+            
+            // Clear all errors
+            const errorElements = document.querySelectorAll('.error');
+            errorElements.forEach(error => error.style.display = 'none');
+            const inputElements = document.querySelectorAll('.input-error');
+            inputElements.forEach(input => input.classList.remove('input-error'));
+        }
+
+        // Auto-format state to uppercase
+        document.getElementById('state').addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase();
+        });
+
+        // Only allow numbers in SSN field
+        document.getElementById('ssn').addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+    </script>
+</body>
+</html>
